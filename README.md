@@ -3,7 +3,7 @@ asd2tiff_GUI and viewer_GUI are Matlab graphic user interfaces made to navigate 
 
 Instruction to run asd2tiff_GUI graphic user interface (GUI)
 
-#This GUI is ment for handy conversion of RIBM-type HS-AFM videos into tiff. file format. The alter can be easily access with ImageJ
+#This GUI is ment for handy conversion of RIBM-type HS-AFM videos into tiff. file format. The later can be easily access with ImageJ
 
 1. Download all the .m files and locate them in the Matlab current folder
 2. Type in the Matlab command window asd2tiff_GUI
