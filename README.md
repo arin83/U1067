@@ -9,7 +9,7 @@ Instruction to run asd2tiff_GUI graphic user interface (GUI)
 2. Type in the Matlab command window asd2tiff_GUI
 3. Load the .asd files into the GUI (from the asd2tiff_GUI menu choose "load folder" --> "asd" and navigate your system for seleciton)
 4. Move the files you would like to convert into the "Playlist" listbox. To do so, select the files you are interested in in the "Files in the directory" listbox and click "Add".
-5. Chose which channel you wanna convert form the "Channels" panel (i.e. channel 1=topography; channel 2=phase or error signal; channel 1&2=both)
+5. Chose which channel you would like to convert form the "Channels" panel (i.e. channel 1=topography; channel 2=phase or error signal; channel 1&2=both)
 6. Procced to the conversion by clicking "Convert2tiff"
 
 Instruction to run viewer_GUI graphic user interface (GUI)
@@ -19,5 +19,5 @@ Instruction to run viewer_GUI graphic user interface (GUI)
 1. Download all the .m files and locate them in the Matlab current folder
 2. Type in the Matlab command window viewer_GUI
 3. Load the .tiff file into the GUI (from the viewer_GUI menu choose "File" --> "Laod tiff"--> "general tiff" if you are unsure about your tiff file format or "asd tiff" if the tiff file has been generated previously by converting an .asd file into .tiff using asd2tiff_GUI). If you would like to open an .asd file, please follow step n.4-
-4. Alternatively, viewer_GUI can be accessed directly from the asd2tiff_GUI interface. To do so, in the asd2tiff_GUI flag the "View selected" checkbox and select the file you would like to open from the "Files in the directory" listbox.
+4. Alternatively, viewer_GUI can be accessed directly from the asd2tiff_GUI interface. To do so, in the asd2tiff_GUI GUI flag the "View selected" checkbox and select the file you would like to open from the "Files in the directory" listbox.
 
