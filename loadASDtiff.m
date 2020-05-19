@@ -47,6 +47,18 @@ catch
     AcqTime=0;
 end
 
+if AcqTime==0
+    
+    try
+        AcqTime=tiff.getTag('DateTime');
+    catch
+        AcqTime=0;
+    end
+       
+end
+
+
+
 Xrange=round((n1/Xres)*10^11);
 Yrange=round((m1/Yres)*10^11);
 

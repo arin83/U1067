@@ -1,3 +1,10 @@
+%this function will extract only the header from your .asd file and put it
+%in matlab a structure. Input argument is the full path of the file.
+%Alternatively, if no input argument is provided uigetfile will be pen to
+%navigate your system
+
+
+
 function header=loadASDh(fullFileName)
 
 if nargin ==0
@@ -32,7 +39,7 @@ if header.Version > 2
 end
 
 switch header.Version
-
+    
     case 0
         
         frewind(fid);
@@ -69,7 +76,7 @@ switch header.Version
         header.nFrames=fread(fid,1,'int');
         
                                                                  
-       case {1, 2}
+     case {1,2}
         
         frewind(fid);
         fseek(fid,4,'bof');
@@ -78,7 +85,8 @@ switch header.Version
         fseek(fid,4,'cof');
         header.opeSize=fread(fid,1,'int');
         header.commSize=fread(fid,1,'int');
-        fseek(fid,8,'cof');
+        header.Ch1type=fread(fid,1,'int');
+        header.Ch2type=fread(fid,1,'int');
         header.nFrames=fread(fid,1,'int');
         fseek(fid,12,'cof');
         header.Xpixel=fread(fid,1,'int');
@@ -121,6 +129,33 @@ switch header.Version
         header.Zgain=fread(fid,1,'float');
         fread(fid,header.opeSize,'char');
         header.comment=(char(fread(fid,header.commSize,'char')))';
+        
+        %replave channelsenumeration code with readabel readable string
+        
+        switch header.Ch1type
+            case 0
+            header.Ch1type='none';
+            case 20564
+            header.Ch1type='topography';  
+            case 21061
+            header.Ch1type='phase'; 
+            otherwise  
+            stringCh=sprintf('Unknown channel code %d', header.Ch1type);
+            header.Ch1type = inputdlg('Please provide Channel name',stringCh);
+        end
+        
+        switch header.Ch2type
+            case 0
+                header.Ch2type='none';
+            case 20564
+                header.Ch2type='topography';
+            case 21061
+                header.Ch2type='phase';
+            otherwise
+                stringCh=sprintf('Unknown channel code %d', header.Ch2type);
+                header.Ch2type = inputdlg('Please provide Channel name',stringCh);
+        end
+
 end
         
         
@@ -131,4 +166,4 @@ end
         
         
         
-        topo=zeros(header.Xpixel, header.Ypixel, header.nFrames);
+      

@@ -22,7 +22,7 @@ function varargout = viewer_GUI(varargin)
 
 % Edit the above text to modify the response to help viewer_GUI
 
-% Last Modified by GUIDE v2.5 14-May-2019 17:33:39
+% Last Modified by GUIDE v2.5 18-May-2020 09:04:58
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 0;
@@ -79,10 +79,17 @@ switch nargin
     case 6
         video=varargin{1};
         fname=varargin{2};
+      %  info=varargin{3};
         handles.myname=fname;
         set(handles.figure1, 'Name', fname);
         setappdata(handles.axes1,'info',varargin{3});        
         set(handles.menu_editmeta,'Enable','on');
+        
+%         if isfield(info,'Xrange')&&isfield(info,'Yrange')
+%             X=info.Xrange; Y=info.Yrange;
+%             msg=['scan size: ' num2str(X) ' x ' num2str(Y) ' nm'];
+%             set(handles.text_scanXYsize,'String',msg);
+%         end
 end
 
 colormap(handles.axes1,'gray')
@@ -130,6 +137,13 @@ function setup(hObject, eventdata, handles,video)
     data=video(:,:,handles.frame);
     
     handles.range=[min(data(:)) max(data(:))];%define the contrast
+    
+    %to avoid error in displaying the image when the image is a cosntant
+    
+    if handles.range(1)==handles.range(1,2)
+        handles.range=[-1 1];
+    end
+    
     %setup frame sliders
     set(handles.slider1, ...
         'Value',1, ...
@@ -139,8 +153,21 @@ function setup(hObject, eventdata, handles,video)
     
     if isappdata(handles.hfig,'info')
         set(handles.menu_editmeta,'Enable','on');
+        info=getappdata(handles.hfig,'info');
+        
+        if isfield(info,'Xrange')&&isfield(info,'Yrange')
+            X=info.Xrange; Y=info.Yrange;
+            msg=['scan size: ' num2str(X) ' x ' num2str(Y) ' nm'];
+            set(handles.text_scanXYsize,'String',msg);
+        else
+            msg='Scan size: Unknown';
+            set(handles.text_scanXYsize,'String',msg);
+        end
+        
     else
         set(handles.menu_editmeta,'Enable','off');
+        msg='Scan size: Unknown';
+        set(handles.text_scanXYsize,'String',msg);
     end
     
     
@@ -163,7 +190,7 @@ function setup(hObject, eventdata, handles,video)
     end
     
     handles.fname=fname;
-    setappdata(handles.hfig,fname,video); %store the video
+    setappdata(handles.hfig,fname,video); %store the video as Ch1 or Ch2
     clear video
     
     %handles=guidata(hObject);
@@ -239,25 +266,28 @@ if fps > 100
     fps=100;
 end
 
-count=1;
+
 nFrames=handles.nFrame;
 
 while player==1
     set(handles.player,'String','playing','ForegroundColor','k','FontWeight','bold','BackgroundColor','g')
     
     for k=sliderValue:nFrames   
-        
-         sliderValue=1;         
+         
+         
+              
          displayI(hObject, eventdata, handles)
          
-         if count==1
-             handles=guidata(hObject);            
-         end
+
          
          pause(1/fps);
          
          set(handles.slider1,'Value',k);                  
          player=get(hObject,'Value');
+         
+         if k==nFrames
+             sliderValue=1;
+         end
                  
          if player==0 
              handles.frame=k;
@@ -267,7 +297,7 @@ while player==1
              
          end
          handles.frame=k;
-         count=count+1;
+        
     end
     
 end
@@ -343,19 +373,28 @@ if strcmp(flag,'on')&&isfield(handles,'htraj')
         
 end
 
+
+%check the autocontrast and the validity of the range
+
+if strcmp(get(handles.menu_auto_ON,'Checked'),'on')
+    range=[prctile(data(:),0.1) prctile(data(:),99.9)];
+    if range(1)==range(1,2)
+        range=[-1 1];
+    end
+else
+    range=handles.range;
+end
+
+
 if isfield(handles, 'himage')==0
     ax1=handles.axes1;
-    if strcmp(get(handles.menu_auto_ON,'Checked'),'on')
-        range=[prctile(data(:),0.1) prctile(data(:),99.9)];
-    else
-        range=handles.range;
-    end
+
     handles.himage=showImage(ax1,data,range);
 else
      
    set(handles.himage,'CData',data)
    if strcmp(get(handles.menu_auto_ON,'Checked'),'on')
-       range=[prctile(data(:),0.1) prctile(data(:),99.9)];
+       
        caxis(get(handles.himage,'Parent'),range)
    end
 end
@@ -400,7 +439,7 @@ h=gcbo;
 rangename='range';
 
 if isfield(handles,'myname')
-    fname=handles.myname;
+    fname=get(handles.figure1,'Name');
     h_contrast_GUI=contrast_GUI(data,h,activeaxes,rangename,fname);
 else
     h_contrast_GUI=contrast_GUI(data,h,activeaxes,rangename)
@@ -460,7 +499,7 @@ function menu_LUT_gray_Callback(hObject, eventdata, handles)
 % hObject    handle to menu_LUT_gray (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-colormap(handles.axes1,gray)
+colormap(handles.axes1,gray(256))
 
 % --------------------------------------------------------------------
 function menu_LUT_slimer_Callback(hObject, eventdata, handles)
@@ -484,7 +523,15 @@ function menu_LUT_matlab_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 imcolormaptool
+cmap=colormap;
+index=[1,256];
+r=interp1([1:64],cmap(:,1),index);
+g=interp1([1:64],cmap(:,2),index);
+b=interp1([1:64],cmap(:,3),index);
 
+ncmap=[r' g' b'];
+
+colormap(handles.axes1,ncmap)
 
 % --------------------------------------------------------------------
 function menu_loadtiff_Callback(hObject, eventdata, handles)
@@ -508,9 +555,8 @@ handles.myname=varName;
 mydata = evalin('base',varName);
 
 if isstruct(mydata)
-    video=mydata.video;
-    mydata=rmfield(mydata,'video');
-    setappdata(handles.hfig,'info',mydata);
+    video=mydata.ch1;    
+    setappdata(handles.hfig,'info',mydata.header);
     set(handles.menu_editmeta,'Enable','on');
 else
     video=mydata;
@@ -555,8 +601,8 @@ function menu_saveWS_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 if isappdata(handles.hfig,'info')
-    mydata=getappdata(handles.hfig,'info');
-    mydata.video=getappdata(handles.hfig,handles.fname);
+    mydata.header=getappdata(handles.hfig,'info');
+    mydata.ch1=getappdata(handles.hfig,handles.fname);
 else
     mydata=getappdata(handles.hfig,handles.fname);
 end
@@ -675,6 +721,11 @@ video = getappdata(handles.hfig,handles.fname);
 frame=handles.frame;
 video=video(:,:,frame);
 
+if size(cmap,1)~=256   %the number of colour needs to corresponf to the depth of the image (8bit)
+    msg=['Operation aborted! Choose a colormap from LUT menu'];
+    msgbox(msg, 'Improper LUT')
+    return
+end
 
 Image=mat2ind(video,range);
 
@@ -692,10 +743,18 @@ cmap=colormap(handles.hfig);
 range=caxis(handles.hfig);
 video = getappdata(handles.hfig,handles.fname);
 
-video=mat2ind(video,range);
+if size(cmap,1)~=256
+    msg=['Operation aborted! Choose a colormap from LUT menu'];
+    msgbox(msg, 'Improper LUT')
+    return
+end
+
+    
+%video=mat2ind(video,range);
 videoRGB=zeros(size(video,1), size(video,2), 3, size(video,3));
 
 for k=1:size(video,3)
+    video(:,:,k)=mat2ind(video(:,:,k),range);
     videoRGB(:,:,:,k)=ind2rgb(video(:,:,k),cmap);
 end
 
@@ -1262,13 +1321,13 @@ function menu_general_plugins_Callback(hObject, eventdata, handles)
 
 
 % --------------------------------------------------------------------
-% function menu_surfalt_Callback(hObject, eventdata, handles)
-% % hObject    handle to menu_surfalt (see GCBO)
-% % eventdata  reserved - to be defined in a future version of MATLAB
-% % handles    structure with handles and user data (see GUIDATA)
-% name=get(handles.figure1,'Name');
-% video=getappdata(handles.hfig,handles.fname);
-% surFlat(video,name,handles.figure1)
+function menu_surfalt_Callback(hObject, eventdata, handles)
+% hObject    handle to menu_surfalt (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+name=get(handles.figure1,'Name');
+video=getappdata(handles.hfig,handles.fname);
+surFlat(video,name,handles.figure1)
 
 
 % --------------------------------------------------------------------
@@ -1440,3 +1499,143 @@ function menu_display_Callback(hObject, eventdata, handles)
 % hObject    handle to menu_display (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+
+% --------------------------------------------------------------------
+function ali_1Dsimple_Callback(hObject, eventdata, handles)
+% hObject    handle to ali_1Dsimple (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+video=getappdata(handles.hfig,handles.fname);
+drift=QdriftV(video,1);
+video=addDriftQ(drift,video);
+
+if isappdata(handles.hfig,'info')
+    info=getappdata(handles.hfig,'info');
+    viewer_GUI(video,['aligned ' get(handles.figure1,'Name')],info)
+else
+    viewer_GUI(video,['aligned ' get(handles.figure1,'Name')])
+end
+
+
+% --------------------------------------------------------------------
+function menu_vol_Callback(hObject, eventdata, handles)
+% hObject    handle to menu_vol (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+data=getappdata(handles.hfig,handles.fname);
+frame=handles.frame;
+data=data(:,:,frame);
+
+%retrive contrast for the image
+
+if isfield(handles, 'himage')==1
+       range=handles.range;
+else
+    range=[min(data(:)) max(data(:))];
+end
+
+%retrive XY calibration
+
+if isappdata(handles.hfig,'info')
+    info=getappdata(handles.hfig,'info');
+    cf=info.Xrange/info.Xpixel;
+else
+    cf=str2double(inputdlg('Please insert XY conversion factor (nm/px)'));
+end
+
+VolumeEst(data,range,cf)
+
+
+% --------------------------------------------------------------------
+function menu_save_mat_Callback(hObject, eventdata, handles)
+% hObject    handle to menu_save_mat (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+cmap=colormap(handles.hfig);
+range=caxis(handles.hfig);
+frame=str2double(get(handles.edit_frame,'String'));
+
+if isappdata(handles.hfig,'info')
+    AFMdata.header=getappdata(handles.hfig,'info');
+    AFMdata.ch1=getappdata(handles.hfig,handles.fname);
+    AFMdata.optional.colormap=cmap;
+    AFMdata.optional.contrast=range;
+    AFMdata.optional.curr_frame=frame;
+else
+    AFMdata.ch1=getappdata(handles.hfig,handles.fname);
+    AFMdata.optional.colormap=cmap;
+    AFMdata.optional.contrast=range;
+    AFMdata.optional.curr_frame=frame;
+end
+
+myname=get(handles.figure1,'name');
+
+extIndices= findstr('.',myname);
+
+if ~isempty(extIndices)
+    FileExtension = myname(max(extIndices):length(myname));
+    myname=strrep(myname,FileExtension,'.smat');
+else
+    myname=[myname '.smat'];
+end
+
+[file path]=uiputfile('*.smat','Save video in Matlab format',myname);
+save(fullfile(path,file),'AFMdata')
+
+
+% --------------------------------------------------------------------
+function menu_load_mat_Callback(hObject, eventdata, handles)
+% hObject    handle to menu_load_mat (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+cleanup(hObject, eventdata, handles);
+handles=guidata(hObject);
+
+[file,path] = uigetfile('*.smat','Select your .smat video');
+filepath=fullfile(path,file);
+
+load(filepath,'-mat')
+
+if isfield(AFMdata,'header')
+    setappdata(handles.hfig,'info',AFMdata.header);
+end
+
+Ch1=AFMdata.ch1;
+
+name1=file;
+
+guidata(hObject, handles);
+
+setup(hObject, eventdata, handles, Ch1);
+% Choose default command line output for vPlay_GUI
+ %recall handles
+handles=guidata(hObject);
+set(handles.figure1,'Name',name1);
+handles.myname=name1;
+
+if isfield(AFMdata,'optional')
+    setappdata(handles.hfig,'optional',AFMdata.optional);
+    setupoption(hObject, eventdata, handles)
+end
+guidata(hObject, handles);
+
+    function setupoption(hObject, eventdata, handles)
+        optional=getappdata(handles.hfig,'optional');
+        mycolormap=optional.colormap;
+        mycontrast=optional.contrast;
+        colormap(handles.hfig,mycolormap);
+        myframe=optional.curr_frame;
+        handles.frame=myframe;
+        caxis(handles.hfig,mycontrast);
+        
+        menu_auto_OFF_Callback(handles.menu_auto_OFF, eventdata, handles)
+        
+        guidata(hObject, handles);
+        handles=guidata(hObject);
+        
+        set(handles.edit_frame,'String',myframe)
+        set(handles.slider1,'Value',myframe);
+        guidata(hObject, handles);
+        
+        displayI(hObject, eventdata, handles);

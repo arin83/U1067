@@ -57,39 +57,43 @@ switch nargin
         handles.info=struct('none',0);
         
     case 4
-        handles.info=varargin{1};
+        handles.info=varargin{1};  %metadata to be loaded
     case 5
         handles.info=varargin{1};
-        fname=varargin{2};
+        fname=varargin{2};    %displayed name on the window (reference file)
         set(handles.figure1, 'Name', fname);
     case 6
          handles.info=varargin{1};
         fname=varargin{2};
         set(handles.figure1, 'Name', fname);
-        handles.reffile=varargin{3};
+        handles.reffile=varargin{3};   %handles needed to appen the metadata to the right image sequence
         set(handles.push_Save,'Enable','on');
         
 end
+
 % Choose default command line output for info_GUI
 fields={'AcqTime','Ypixel','Yrange','Xpixel','Xrange','date','time'...
-    'comment','sample','microscope','cantilever'};
+    'comment','sample','microscope','cantilever','Ch1type','Ch2type'};
 info=handles.info;
 
 if ~isstruct(info)
     info=struct('none',0);
 end
 
+%check which fileds can not be found in the header and replace with
+%'unknown' string
+
 fieldstest=isfield(info,fields);
 pos=find(~fieldstest);
 
-if any(pos<5) && nargin==6
+if any(pos<5) && nargin==6  %if crucial info for calibration are missing (i.e. first five fields) allow manual entering
     set(handles.push_set,'Enable','on')
     set(handles.push_Save,'Enable','off');
 end
 
 if ~isempty(pos)
     for am=1:numel(pos)
-      info.(fields{pos(am)})='Unknown';
+      info.(fields{pos(am)})='Unknown';  %create the filed missing with unknown values
     end
 end
 
@@ -100,6 +104,8 @@ set(handles.text15,'String',info.Xpixel);
 set(handles.text14,'String',info.Xrange);
 set(handles.text12,'String',info.date);
 set(handles.text13,'String',info.time);
+set(handles.text27,'String',info.Ch1type);
+set(handles.text28,'String',info.Ch2type);
 
 info.comment=regexprep(info.comment,'\s+',' ');
 set(handles.text18,'String',info.comment);
@@ -112,6 +118,10 @@ set(handles.edit_microscope,'String',info.microscope);
 
 info.cantilever=regexprep(info.cantilever,'\s+',' ');
 set(handles.edit_cantilever,'String',info.cantilever);
+
+% testfig=imread('test.png');
+% set(handles.push_edit,'CData',testfig);
+
 
 handles.info=info;
 

@@ -22,7 +22,7 @@ function varargout = contrast_GUI(varargin)
 
 % Edit the above text to modify the response to help contrast_GUI
 
-% Last Modified by GUIDE v2.5 04-Apr-2018 15:03:03
+% Last Modified by GUIDE v2.5 02-May-2020 13:20:18
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 0;
@@ -75,6 +75,10 @@ else
     guidata(hObject, handles);
 end
 % Choose default command line output for contrast_GUI
+
+% Set the focus event callback
+
+
 handles.output = hObject;
 
 % Update handles structure
@@ -119,16 +123,16 @@ if range(1)>=range(2)
     'Value',range(1))
 end
 
-ln1=line([xpos xpos],yLimits);
+ln1=line([xpos xpos],yLimits,'Color','g','LineWidth',1);
 handles.ln1=ln1;
 
 set(handles.edit_low,'String',range(1))
 
 if get(handles.check_lock,'Value')
-    delta=str2double(get(handles.text_delta,'String'));
+    delta=str2double(get(handles.edt_delta,'String'));
     range(2)=range(1)+delta;
     
-    if  isfield(handles,'ln2')
+    if  isfield(handles,'ln2')&&ishandle(handles.ln2)
         handles.ln2.XData=[range(2) range(2)];
     end
     
@@ -140,7 +144,7 @@ handles.range=range;
 guidata(hObject, handles);
 
 status=get(handles.checkbox1,'Value');
-set(handles.text_delta,'String', num2str(range(2)-range(1)));
+set(handles.edt_delta,'String', num2str(range(2)-range(1)));
 
 if status
     transfer(hObject, eventdata, handles)
@@ -182,13 +186,13 @@ if range(2)<=range(1)
 end
 
 
-ln2=line([xpos xpos],yLimits,'color','r');
+ln2=line([xpos xpos],yLimits,'color','c','LineWidth',1);
 handles.ln2=ln2;
 
 set(handles.edit_high,'String',range(2))
 
 if get(handles.check_lock,'Value')
-    delta=str2double(get(handles.text_delta,'String'));
+    delta=str2double(get(handles.edt_delta,'String'));
     range(1)=range(2)-delta;
     
     if  isfield(handles,'ln1')
@@ -203,7 +207,7 @@ handles.range=range;
 guidata(hObject, handles);
 
 status=get(handles.checkbox1,'Value');
-set(handles.text_delta,'String', num2str(range(2)-range(1)));
+set(handles.edt_delta,'String', num2str(range(2)-range(1)));
 
 if status
     transfer(hObject, eventdata, handles)
@@ -308,11 +312,33 @@ axes(handles.axes1);
 inc=handles.inc;
 
 data=getappdata(gcf,'MyData');
-hist(data,sqrt(length(data)));
+histoplotH=histogram(data,round(sqrt(length(data))));
+
+%make it look nicer
+
+histoplotH.FaceColor=[0 0 0];
+histoplotH.EdgeColor=[1 1 1];
+set(handles.axes1,'FontSize',8,'Color','k','XGrid','on','XColor','w',...
+    'FontWeight','bold','YColor','w');
+
+
+
 
 rangedata=[min(data(:)) max(data(:))];
-drange=(rangedata(2)-rangedata(1))/2;
-xlim([rangedata(1)-drange rangedata(2)+drange]);
+
+
+if ~isfield(handles,'seleXlim')
+    
+    drange=(rangedata(2)-rangedata(1))/2;
+    x1=rangedata(1)-drange;
+    x2=rangedata(2)+drange;
+    myXlim=[x1 x2];
+    xlim(myXlim);
+    
+else
+    myXlim=handles.seleXlim;
+    xlim(myXlim);
+end
 
 targetAxis=handles.parentaxes;
 range=caxis(targetAxis);
@@ -320,29 +346,29 @@ handles.range=range;
 
 set(handles.slider2, ...
     'Value',range(1), ...
-    'max',rangedata(2)+drange, ...
-    'min',rangedata(1)-drange,...
+    'max',myXlim(2), ...
+    'min',myXlim(1),...
     'sliderstep',[inc 0.1]);
 set(handles.slider3, ...
     'Value',range(2), ...
-    'max',rangedata(2)+drange, ...
-    'min',rangedata(1)-drange,...
+    'max',myXlim(2), ...
+    'min',myXlim(1),...
     'sliderstep',[inc 0.1]);
 
 %draw the lines
 yLimits = get(gca,'YLim');
 xpos=range(1);
-ln1=line([xpos xpos],yLimits);
+ln1=line([xpos xpos],yLimits,'color','g','LineWidth',1);
 handles.ln1=ln1;
 xpos=range(2);
-ln2=line([xpos xpos],yLimits,'color','r');
+ln2=line([xpos xpos],yLimits,'color','c','LineWidth',1);
 handles.ln2=ln2;
 
 %put info in the edit boxes
 set(handles.edit_low,'String',num2str(range(1)));
 set(handles.edit_high,'String',num2str(range(2)));
 
-set(handles.text_delta,'String', num2str(range(2)-range(1)));
+set(handles.edt_delta,'String', num2str(range(2)-range(1)));
 
 guidata(hObject, handles);
 
@@ -359,8 +385,12 @@ function transfer(hObject, eventdata, handles)
       caxis(targetAxis,range);
       name=handles.rangename;
       g1data.(name)=range;
+      newName=get(g1data.figure1,'Name');
+      set(handles.GUI2,'Name',newName)
 %guidata(hObject, handles);     
 guidata(h,g1data);
+
+push_update_Callback(hObject, eventdata, handles)
  end
 
 
@@ -414,7 +444,7 @@ function push_auto_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 data=getappdata(gcf,'MyData');
-delta=[min(data)+range(data)/10 max(data)-range(data)/10];
+delta=[mean(data)-2*std(data) mean(data)+2*std(data)];
 handles.range=delta;
 
 set(handles.slider2, ...
@@ -439,7 +469,7 @@ function push_update_Callback(hObject, eventdata, handles)
     
 cla(handles.axes1,'reset');
 
-%get the data shown in surFlat GUI and setup data
+%get the data shown in parent axis and setup data
 targetAxis=handles.parentaxes;
 findimage=findobj(targetAxis,'type','image');
 data=findimage.CData;
@@ -447,6 +477,16 @@ setappdata(gcf,'MyData',data(:));
 
 %show the new graph
 setup(hObject, eventdata, handles);
+
+%update the title
+  h = handles.parentGUI;
+  if ~isempty(h)
+      g1data = guidata(h);
+      newName=get(g1data.figure1,'Name');
+      set(handles.GUI2,'Name',newName)     
+  end
+
+
 handles = guidata(hObject);
 guidata(hObject, handles);
 
@@ -458,3 +498,89 @@ function check_lock_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of check_lock
+
+
+% --- Executes on mouse press over figure background.
+function GUI2_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to GUI2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+push_update_Callback(hObject, eventdata, handles);
+
+
+% --- Executes on button press in push_scaleX.
+function push_scaleX_Callback(hObject, eventdata, handles)
+% hObject    handle to push_scaleX (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+def=get(handles.axes1,'XLim');
+defn={num2str(def(1,1)),num2str(def(1,2))};
+dlg_title='X limits';
+prompt={'Enter minimum value:','Enter maximum value:'};
+num_lines=[1 50];
+options.WindowStyle='normal';
+answer = inputdlg(prompt,dlg_title,num_lines,defn,options);
+seleX=[str2num(answer{1,1}) str2num(answer{2,1})];
+
+targetAxis=handles.parentaxes;
+range=caxis(targetAxis);
+%adjust the axis
+
+if seleX(1,1)<range(1,1)&& seleX(1,2)>range(1,2)
+    set(handles.axes1,'XLim',seleX);
+    
+else
+    msgbox('Invalid Value', 'Error','error');
+    return
+end
+
+handles.seleXlim=seleX;
+
+guidata(hObject, handles);
+
+setup(hObject, eventdata, handles);
+
+
+
+function edt_delta_Callback(hObject, eventdata, handles)
+% hObject    handle to edt_delta (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edt_delta as text
+%        str2double(get(hObject,'String')) returns contents of edt_delta as a double
+range=handles.range;
+desireWidth=str2double(get(hObject,'String'));
+
+currLeft=get(handles.slider2,'Value'); 
+currRight=get(handles.slider3,'Value');
+
+%check desireWidth has sense and abort if otherwise
+
+if desireWidth<0||isnan(desireWidth)
+    set(hObject,'String',num2str(currRight-currLeft))
+    return
+end
+
+delta=(desireWidth-(currRight-currLeft))/2;
+Xwidth=get(handles.axes1,'XLim');
+
+if (currLeft-delta<Xwidth(1))||(currRight+delta>Xwidth(2))
+    return
+end
+
+range=[range(1)-delta, range(2)+delta];
+
+handles.range=range;
+
+%set the sliders to the new values
+
+set(handles.slider2, ...
+    'Value',range(1))
+
+set(handles.slider3, ...
+    'Value',range(2))
+guidata(hObject, handles);
+
+slider3_Callback(hObject, eventdata, handles)
+slider2_Callback(hObject, eventdata, handles)

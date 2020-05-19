@@ -22,7 +22,7 @@ function varargout = profile_GUI(varargin)
 
 % Edit the above text to modify the response to help profile_GUI
 
-% Last Modified by GUIDE v2.5 06-Apr-2019 16:48:14
+% Last Modified by GUIDE v2.5 14-May-2020 15:18:29
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 0;
@@ -70,12 +70,12 @@ switch nargin
         
         %retrive the data
         
-        set(handles.text3,'String','Distance (pxls)','ForegroundColor','white');
+        set(handles.text_u,'String','[pxls]','ForegroundColor','white');
         
         
         
         handles.ax=gca;
-        set(handles.ax,'XColor','white','YColor','white');
+       
         
     case 5
         handles.dpix=1;
@@ -92,13 +92,15 @@ switch nargin
         dist=sqrt((yp(end)-yp(1))^2+(xp(end)-xp(1))^2)*dpix;
         ipix=dist/numel(xp);
         c(:,1)=[ipix:ipix:dist];
-        set(handles.text3,'String','Distance (pxls)','ForegroundColor','white');
+        set(handles.text_u,'String','[pxls]','ForegroundColor','white');
         
         handles.axes1;
         
         handles.ax=gca;
-        plot(handles.ax,c(:,1),c(:,2),'LineWidth',2,'Color',getColor(hlin));
-        set(handles.ax,'XColor','white','YColor','white');
+        h_plot=plot(handles.ax,c(:,1),c(:,2),'LineWidth',2,'Color',getColor(hlin));
+        %set a tag for easy retrival
+        set(h_plot,'tag','my_cross')
+        
         xlim(handles.ax,[-dist/40 dist+dist/40])
         
     case 6
@@ -116,13 +118,14 @@ switch nargin
         dist=sqrt((yp(end)-yp(1))^2+(xp(end)-xp(1))^2)*dpix;
         ipix=dist/numel(xp);
         c(:,1)=[ipix:ipix:dist];
-        set(handles.text3,'String','Distance (nm)','ForegroundColor','white');
+        set(handles.text_u,'String','[nm]','ForegroundColor','white');
         
         handles.axes1;
         
         handles.ax=gca;
-        plot(handles.ax,c(:,1),c(:,2),'LineWidth',2,'Color',getColor(hlin));
-        set(handles.ax,'XColor','white','YColor','white');
+        h_plot=plot(handles.ax,c(:,1),c(:,2),'LineWidth',2,'Color',getColor(hlin));
+          %set a tag for easy retrival
+        set(h_plot,'tag','my_cross')
         xlim(handles.ax,[-dist/40 dist+dist/40])
 end
 
@@ -138,6 +141,12 @@ if nargin>3
     end
 end
 
+%set up fields for storing the X and Y measurements
+handles.x_measured=[];
+handles.y_measured=[];
+handles.isXorY=[];
+
+set(handles.ax,'XColor','white','YColor','white','FontSize',8);
 guidata(hObject, handles);
 % UIWAIT makes profile_GUI wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -180,7 +189,8 @@ function push_update_Callback(hObject, eventdata, handles)
         
         
         hold on
-        plot(c(:,1),c(:,2),'LineWidth',2);
+        h=plot(c(:,1),c(:,2),'LineWidth',2);
+        set(h,'tag','my_cross')
         xlim(handles.ax,'auto')
         hold off
         
@@ -218,6 +228,16 @@ cla(handles.ax)
 set(handles.ax,'XColor','white','YColor','white');
 delete(h);
 
+%clear and reset the axis
+handles.x_measured=[];
+handles.y_measured=[];
+set(handles.text9,'String',num2str(00))
+set(handles.text10,'String',num2str(00))
+handles.isXorY=[];
+
+%This will delete the line from which the crosssection come as well in the
+%viewer_GUI
+
 hlin=handles.myline;
 delete(hlin)
 handles.myline=[];
@@ -231,7 +251,7 @@ function push_baseline_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 ax=handles.ax;
 %retrive the xy data
-h = findobj(ax,'Type','line');
+h = findobj(ax,'Type','line','tag','my_cross');
 
 if numel(h)==1
     ydata=get(h,'Ydata') ;
@@ -242,10 +262,10 @@ else
         name{k}=['Line ' num2str(k)];
     end
     choice=listboxchoice(name,h);
-    h=h(choice);
-    mycolor=get(h,'Color');
-    ydata=get(h,'Ydata') ;
-    xdata=get(h,'Xdata') ;
+    hc=h(choice);
+    mycolor=get(hc,'Color');
+    ydata=get(hc,'Ydata') ;
+    xdata=get(hc,'Xdata') ;
 end
 
 
@@ -253,7 +273,7 @@ bfig=figure;
 set(bfig,'Name','Click n data point for  linear offset adjustment, press return when over','NumberTitle','off');
 
 ax2=axes;
-plot(ax2,xdata,ydata,'-','LineWidth', 2);
+plot(ax2,xdata,ydata,'-','LineWidth', 2,'Color',mycolor);
 [x,y] = ginput;
 
 hold on
@@ -280,9 +300,9 @@ for k=1:(numel(x)-1)
     
 end
 
-%delete all the previous crap
-h = findobj(ax,'Type','line');
-delete(h);
+%delete the un-flattened line
+
+delete(h(choice));
 
 hold(ax2,'on')
 plot(ax2,xdata((xgraph(1):xgraph(end))),yOffset(xgraph(1):xgraph(end)),'--')
@@ -293,7 +313,7 @@ hold(ax2,'off')
 ydata2=ydata-yOffset;
 
 hold(ax,'on')
-plot(ax,xdata,ydata2,'LineWidth',2,'Color',mycolor)
+plot(ax,xdata,ydata2,'LineWidth',2,'Color',mycolor,'tag','my_cross')
 xlim(handles.ax,'auto')
 hold(ax,'off')
 
@@ -312,7 +332,11 @@ function menu_save2ws_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 ax=handles.ax;
 %retrive the xy data
-h = findobj(ax,'Type','line');
+h = findobj(ax,'Type','line','tag','my_cross');
+
+if isempty(h)
+    return
+end
 
 if numel(h)==1
     ydata=get(h,'Ydata') ;
@@ -338,7 +362,7 @@ function menu_save2exc_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 ax=handles.ax;
 %retrive the xy data
-h = findobj(ax,'Type','line');
+h = findobj(ax,'Type','line','tag','my_cross');
 
 if numel(h)==1
     ydata=get(h,'Ydata') ;
@@ -368,29 +392,231 @@ function push_measure_Callback(hObject, eventdata, handles)
 % hObject    handle to push_measure (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+%clean everything
+
+push_delmeasure_Callback(hObject, eventdata, handles)
+
+%check if vertical or horizontal line
+
 if (get(handles.radio_X,'Value'))==1
     option=1;
 elseif (get(handles.radio_Y,'Value'))==1
     option=2;
-else
-    option=3;
 end
+
+%get axis handel and x,y limits to draw lines
 
 ax=handles.ax;
-l=imdistline(ax);
-set(l,'tag','distline');
-api = iptgetapi(l);
-xax=get(gca,'XLim');
-yax=get(gca,'YLim');
+hlim=get(ax,'XLim');
+vlim=get(ax,'YLim');
 
-if option==2
-    api.setPosition([max(xax)/2 min(yax)+(max(yax)-min(yax))*1/6;...
-        max(xax)/2 min(yax)+(max(yax)-min(yax))*5/6])
+%draw the two lines and give default positions and highlight area
+
+%case vertical lines, measuring in X
+if option==1
+    
+    %flag as X measurement
+    handles.isXorY=1;
+    
+    xstart=(hlim(2)-hlim(1))/3;
+    
+    %highlight the are between the lines
+    color_a=patch([xstart xstart*2 xstart*2 xstart],...
+        [vlim(1) vlim(1) vlim(2) vlim(2)], [0.2 0.4 0.2], 'FaceAlpha',0.3, 'EdgeColor','none');
+    
+    %draw line on the left + hadnle
+    hold on
+    line_l(1)=line(ax,[xstart xstart],...
+        vlim,'LineWidth',2,'Color','r','linestyle','--');
+    line_l(2)=plot(xstart,vlim(2));
+    hold off
+    
+    %store the data and handles for each left element, are needed later on
+    %when dragging to update all the elements 'live'
+    for k=1:2
+        setappdata(line_l(k),'highlight',color_a)
+        setappdata(line_l(k),'text',handles.text5)
+        setappdata(line_l(k),'group',line_l)
+    end
+    
+    %draw line on the right + hadnle
+    hold on
+    line_r(1)=line(ax,[xstart*2 xstart*2],...
+        vlim,'LineWidth',2,'Color','r','linestyle','--');
+    line_r(2)=plot(xstart*2,vlim(2));
+    hold off
+    
+    for k=1:2
+        setappdata(line_r(k),'highlight',color_a)
+        setappdata(line_r(k),'text',handles.text5)
+        setappdata(line_r(k),'group',line_r)
+    end
+            
+    %resize the markers to make them big. They serves as an easy handle to
+    %drag and drop
+    set(line_l(2),'Marker','s','MarkerSize',12,'MarkerFaceColor','r')
+    set(line_r(2),'Marker','s','MarkerSize',12,'MarkerFaceColor','r')    
+    
+    %make lines and handles on the lef and right draggable
+    draggable(line_l,'h',[hlim(1)+1 hlim(2)-1],@update_area1,'endfcn',@calch)
+    draggable(line_r,'h',[hlim(1)+1 hlim(2)-1],@update_area2,'endfcn',@calch)
+   
+    %case horizontal lines, measuring in Y
+elseif option==2
+    
+%flag as Y measurement
+    handles.isXorY=0;
+    
+    ystart=((vlim(2)-vlim(1))/3);
+    
+    color_a=patch([hlim(1) hlim(2) hlim(2) hlim(1)],...
+        [ystart+vlim(1) ystart+vlim(1)  ystart*2++vlim(1) ystart*2++vlim(1)],...
+        [0.2 0.4 0.2], 'FaceAlpha',0.3, 'EdgeColor','none');
+    
+    hold on
+    line_l(1)=line(ax,hlim,...
+        [ystart+vlim(1) ystart+vlim(1)],'LineWidth',2,'Color','r',...
+        'linestyle','--');
+    line_l(2)=plot(hlim(2),ystart+vlim(1));
+    hold off
+    
+    for k=1:2
+        setappdata(line_l(k),'highlight',color_a)
+        setappdata(line_l(k),'text',handles.text5)
+        setappdata(line_l(k),'group',line_l)
+    end
+    
+    hold on
+    line_r(1)=line(ax,hlim,...
+        [2*ystart+vlim(1) 2*ystart+vlim(1)],'LineWidth',2,'Color','r',...
+        'linestyle','--');
+    line_r(2)=plot(hlim(2),2*ystart+vlim(1));
+    hold off
+    
+    for k=1:2
+    setappdata(line_r(k),'highlight',color_a)
+    setappdata(line_r(k),'text',handles.text5)
+    setappdata(line_r(k),'group',line_r)
+    end
+    
+    set(line_l(2),'Marker','s','MarkerSize',12,'MarkerFaceColor','r')
+    set(line_r(2),'Marker','s','MarkerSize',12,'MarkerFaceColor','r')
+    
+    % %save area handle
+    
+    
+    %make them draggable
+    delta=(vlim(2)-vlim(1))/50;
+    draggable(line_l,'v',[vlim(1)+delta vlim(2)-delta],@update_area1,'endfcn',@calch)
+    draggable(line_r,'v',[vlim(1)+delta vlim(2)-delta],@update_area2,'endfcn',@calch)
 end
 
-fcn = costrainline('imline',...
-    xax,yax,option);
-api.setDragConstraintFcn(fcn);
+guidata(hObject, handles);
+
+function update_area1(line_m)
+ 
+flag=0;
+pos=get(line_m,'Xdata');
+ylimits=ylim(gca);
+xlimits=xlim(gca);
+group=getappdata(line_m,'group');
+
+if (numel(pos))==1
+    if pos~=xlimits(2)
+        set(group(1),'xdata',[pos pos],'ydata',ylimits)
+    else
+        pos=get(line_m,'Ydata');
+        set(group(1),'xdata',xlimits,'ydata',[pos pos])
+        flag=1;
+    end
+    
+else    
+    if pos(1)~=pos(2)
+        pos=get(line_m,'Ydata');
+        set(group(2),'xdata',xlimits(2),'ydata',pos(1))
+        flag=1;
+    else
+        set(group(2),'xdata',pos(1),'ydata',ylimits(2))
+    end
+end
+
+h_area=getappdata(line_m,'highlight');
+newVert=get(h_area,'Vertices'); 
+
+if flag==0
+    newVert([1 4],1)=pos(1);
+else
+    newVert([1 2],2)=pos(1);
+end
+
+set(h_area,'Vertices',newVert);
+
+function update_area2(line_m)
+
+flag=0;
+pos=get(line_m,'Xdata');
+ylimits=ylim(gca);
+xlimits=xlim(gca);
+group=getappdata(line_m,'group');
+
+if (numel(pos))==1
+    if pos~=xlimits(2)
+        set(group(1),'xdata',[pos pos],'ydata',ylimits)
+    else
+        pos=get(line_m,'Ydata');
+        set(group(1),'xdata',xlimits,'ydata',[pos pos])
+        flag=1;
+    end
+    
+else    
+    if pos(1)~=pos(2)
+        pos=get(line_m,'Ydata');
+        set(group(2),'xdata',xlimits(2),'ydata',pos(1))
+        flag=1;
+    else
+        set(group(2),'xdata',pos(1),'ydata',ylimits(2))
+    end
+end
+
+h_area=getappdata(line_m,'highlight');
+newVert=get(h_area,'Vertices'); 
+
+if flag==0
+    newVert([2 3],1)=pos(1);
+else
+    newVert([3 4],2)=pos(1);
+end
+
+set(h_area,'Vertices',newVert);
+
+function calch(line_m)
+h_area=getappdata(line_m,'highlight');
+Vert=get(h_area,'Vertices');
+
+if sum([Vert(1,2) Vert(4,2)]-ylim(gca))==0
+    distance=abs(Vert(2,1)-Vert(1,1));
+
+else
+    distance=abs(Vert(4,2)-Vert(1,2));
+   
+end
+%print out results
+fprintf('Distance: %5.1f\n',distance)
+h_text=getappdata(line_m,'text');
+set(h_text,'String',num2str(distance))
+
+%make it blink
+for k=1:2
+    set(h_text,'ForegroundColor','w')
+    pause(0.2)
+    set(h_text,'ForegroundColor','k')
+    pause(0.2)
+end
+
+%save
+
+
 
 
 % --- Executes on button press in push_delmeasure.
@@ -398,8 +624,16 @@ function push_delmeasure_Callback(hObject, eventdata, handles)
 % hObject    handle to push_delmeasure (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-deleteme=findobj(handles.ax, 'tag', 'distline');
+deleteme=findobj(handles.ax,'type', 'line','linestyle','--','color','r');
 delete(deleteme);
+deleteme=findobj(handles.ax,'MarkerFaceColor','r');
+delete(deleteme);
+deleteme=findobj(handles.ax,'type', 'patch');
+delete(deleteme);
+
+
+set(handles.text5,'String',num2str(000));
+
 
 
 % --------------------------------------------------------------------
@@ -422,65 +656,41 @@ function menu_save2wsm_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-
-h=findobj(handles.ax, 'tag', 'distline');
-
-if ~isempty(h)
-    if numel(h)==1
-        pos=getPosition(h(1).ApplicationData.roiObjectReference);
-        data = pdist(ans,'euclidean');
-        
-    else
-        for k=1:numel(h)
-            pos=getPosition(h(k).ApplicationData.roiObjectReference);
-            data(k) = pdist(pos,'euclidean');
-        end
-        
-    end
-else
-    return
+if ~isempty(handles.x_measured)||~isempty(handles.y_measured)
+    
+    measurements.X_measurements=handles.x_measured;
+    measurements.Y_measurements=handles.y_measured;
+    
+    name = inputdlg('Variable name','Save to workspace');
+    assignin('base',name{1},measurements);
 end
-
-data=data';
-name = inputdlg('Variable name','Save to workspace');
-assignin('base',name{1},data);
 
 % --------------------------------------------------------------------
 function menu_save2excm_Callback(hObject, eventdata, handles)
 % hObject    handle to menu_save2excm (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-h=findobj(handles.ax, 'tag', 'distline');
 
-if ~isempty(h)
-    if numel(h)==1
-        pos=getPosition(h(1).ApplicationData.roiObjectReference);
-        data = pdist(ans,'euclidean');
-        
-    else
-        for k=1:numel(h)
-            pos=getPosition(h(k).ApplicationData.roiObjectReference);
-            data(k) = pdist(pos,'euclidean');
-        end
-        
-    end
-else
-    return
+if ~isempty(handles.x_measured)||~isempty(handles.y_measured)
+    x_data=handles.x_measured;
+    y_data=handles.y_measured;
+    N=max(numel(handles.x_measured),numel(handles.y_measured));
+    data=nan(N,2);
+    data(1:numel(handles.x_measured),1)=x_data;
+    data(1:numel(handles.y_measured),2)=y_data;
+    
+    T = array2table(data,...
+        'VariableNames',{'x_measured','y_measured'});
+    
+    [file,path] = uiputfile('*.xlsx','Save data in excel');
+    fullpath=fullfile(path,file);
+    writetable(T,fullpath);
 end
 
-data=data';
 
-T = array2table(data,...
-    'VariableNames',{'distance(p2p)'});
-
-[file,path] = uiputfile('*.xlsx','Save data in excel');
-fullpath=fullfile(path,file);
-writetable(T,fullpath);
-
-
-% --- Executes on button press in push_add.
+% --- Executes on button press in push_addxymeasured.
 function push_add_Callback(hObject, eventdata, handles)
-% hObject    handle to push_add (see GCBO)
+% hObject    handle to push_addxymeasured (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
     data=getimage(handles.myaxis);
@@ -513,7 +723,7 @@ function push_add_Callback(hObject, eventdata, handles)
     xlim(handles.ax,'auto')
     hold(handles.ax,'off')
     
-    color_nl=get(nl,'Color'); setColor(hlin,color_nl);
+    color_nl=get(nl,'Color'); setColor(hlin,color_nl);set(nl,'tag','my_cross');
     guidata(hObject, handles);
 
 
@@ -544,6 +754,48 @@ function menu_calXY_Callback(hObject, eventdata, handles)
 cal = str2double(inputdlg('units nm/pixels','XY calibration'));
 if ~isnan(cal)
     handles.dpix=cal;
-    set(handles.text3,'String','Distance (nm)','ForegroundColor','white');
+    set(handles.text_u,'String','[nm]','ForegroundColor','white');
 end
 guidata(hObject, handles);
+
+
+% --- Executes on button press in push_addXYmeasured.
+function push_addXYmeasured_Callback(hObject, eventdata, handles)
+% hObject    handle to push_addXYmeasured (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+current=str2num(get(handles.text5,'String'));
+
+if current
+    if ~isempty(handles.isXorY) && handles.isXorY==1
+    mydata_x=handles.x_measured;
+    mydata_x(end+1)=current;
+    set(handles.text9,'String',num2str(numel(mydata_x)))
+    handles.x_measured=mydata_x;
+    color=get(handles.text9,'BackgroundColor');
+    
+    for k=1:2       
+        set(handles.text9,'BackgroundColor','g')
+        pause(0.2)
+        set(handles.text9,'BackgroundColor',color)
+        pause(0.2)
+    end
+    
+    elseif ~isempty(handles.isXorY) && handles.isXorY==0
+          mydata_y=handles.y_measured;
+    mydata_y(end+1)=current;
+    set(handles.text10,'String',num2str(numel(mydata_y)))
+    handles.y_measured=mydata_y;
+    color=get(handles.text10,'BackgroundColor');
+    
+    for k=1:2        
+        set(handles.text10,'BackgroundColor','g')
+        pause(0.2)
+        set(handles.text10,'backgroundColor',color)
+        pause(0.2)
+    end
+    else
+        return
+    end
+    guidata(hObject, handles);
+end  
