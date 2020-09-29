@@ -1,0 +1,11 @@
+How to update your files on github:
+
+101
+How to find all dependencies and make a zip archcive:
+1)Use the "Package App" in Matlab
+2)It will generate an *.mlappinstall file 
+3)Install the app by double-clicking. You can find the app under the "APPS" tab im matlab (MyApps)
+
+How to view all the *.m and *.fig files packed in the app?
+1) Renape the *.mlappinstall file as *.zip
+2) Unzip it and find your files
