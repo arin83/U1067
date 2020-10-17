@@ -9,3 +9,19 @@ How to find all dependencies and make a zip archcive:
 How to view all the *.m and *.fig files packed in the app?
 1) Renape the *.mlappinstall file as *.zip
 2) Unzip it and find your files
+
+How to update?
+Open git bush
+
+> git config --global user.email "arin_marchesi@yahoo.it"
+git config --user.name "Arin Marchesi"
+cd documents
+cd U1067
+git add -A
+git pull
+git push -u origin master
+git commit -m "Version may19th"git push
+
+GitHub info
+https://opensource.com/article/19/2/git-terminology
+https://opensource.com/resources/what-is-git
