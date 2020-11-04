@@ -9,6 +9,8 @@ How to find all dependencies and make a zip archcive:
 How to view all the *.m and *.fig files packed in the app?
 1) Renape the *.mlappinstall file as *.zip
 2) Unzip it and find your files
+OR
+you can access under the "Add-ons/App" path in your MATLAB.
 
 How to update?
 Open git bush
